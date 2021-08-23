@@ -2,6 +2,8 @@ const Discord = require("discord.js")
 
 const client = new Discord.Client({intents: ["GUILDS","GUILD_MESSAGES"]});
 
+const token = "Your Token"
+
 const prefix = '.'
 
 client.on("ready",()=>{
@@ -32,4 +34,4 @@ client.on("ready",()=>{
     
 })
 
-client.login("ODc5NDYwMDQ4MDc2NjkzNTM0.YSQC_w.H1f670zTuLYhsziELGZ818VuQT0")
+client.login(token)
