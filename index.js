@@ -1,8 +1,8 @@
+require('dotenv').config()
+
 const Discord = require("discord.js")
 
 const client = new Discord.Client({intents: ["GUILDS","GUILD_MESSAGES"]});
-
-const token = "Your Token"
 
 const prefix = '.'
 
@@ -34,4 +34,4 @@ client.on("ready",()=>{
     
 })
 
-client.login(token)
+client.login(process.env.DISCORD_TOKEN)
