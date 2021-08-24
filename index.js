@@ -4,8 +4,6 @@ var axios = require("axios").default
 
 const Discord = require("discord.js")
 
-scraperStart = require("./scraper/index")
-
 const client = new Discord.Client({intents: ["GUILDS","GUILD_MESSAGES"]});
 
 const filter = [
@@ -73,13 +71,6 @@ querySearchAmazon("ps5+console",1,function(query){
 })
 */
 
-var data;
-scraperStart(function(){
-    module.exports = "playstation 5"
-    require("./scraper/pageScraper")(function(){},function(productDetails){
-        console.log(productDetails);
-    })
-})
 client.on("ready",()=>{
     console.log("bot is ready to roll")
     
