@@ -15,31 +15,35 @@ const filter = [
 /**
  * @param {String} keyword keyword to quarry for
  * @param {Number} toPage the page to stop at
- * @param {Function} callback callback for async
+ * @returns promise for async
  */
-function querySearchAmazon(keyword,toPage,callback){ //keyword uses url format
-    var query = [];
-    let page = 1
-    var options = {
-        method: 'GET',
-        url: 'https://amazon-products1.p.rapidapi.com/search',
-        params: {country: 'IT', query: keyword, page: page},
-        headers: {
-          'x-rapidapi-host': 'amazon-products1.p.rapidapi.com',
-          'x-rapidapi-key': process.env.AMAZON_API_KEY
+function querySearchAmazon(keyword,toPage){ //keyword uses url format
+    let promise = new Promise(function(resolve,reject){
+        var query = [];
+        let page = 1
+        var options = {
+            method: 'GET',
+            url: 'https://amazon-products1.p.rapidapi.com/search',
+            params: {country: 'IT', query: keyword, page: page},
+            headers: {
+            'x-rapidapi-host': 'amazon-products1.p.rapidapi.com',
+            'x-rapidapi-key': process.env.AMAZON_API_KEY
+            }
+        };
+        for(page;page <= toPage;page++){
+            axios.request(options).then(function (response) {
+                query.push(response.data)
+                options.params.page = page
+            }).then(function(){
+                resolve(query)
+            })
+            .catch(function (error) {
+                console.error(error);
+                reject(error)
+            })
         }
-      };
-    for(page;page <= toPage;page++){
-        axios.request(options).then(function (response) {
-            query.push(response.data)
-            options.params.page = page
-        }).then(function(){
-            callback(query)
-        })
-        .catch(function (error) {
-            console.error(error);
-        })
-    }
+    })
+    return promise
 }
 
 /**
@@ -64,12 +68,10 @@ function queryResultClearer(query){
     }
     return cleanQuery
 }
-
-/*
-querySearchAmazon("ps5+console",1,function(query){
-    console.log(queryResultClearer(query))
-})
-*/
+/**
+ * 
+ * @param {Object} array array with objects to be pharsed
+ */
 
 client.on("ready",()=>{
     console.log("bot is ready to roll")
@@ -80,7 +82,12 @@ client.on("ready",()=>{
             description: "risponde con pong"
         }
     })
-
+    client.api.applications(client.user.id).guilds("678983995551121410").commands.post({
+        data: {
+            name: "disp_ps5",
+            description: "controlla la disponibilità della ps5 su amazon (aggiungiero altri)"
+        }
+    })
     client.ws.on("INTERACTION_CREATE", async interaction =>{
         const command = interaction.data.name.toLowerCase()
         const args = interaction.data.options
@@ -95,6 +102,41 @@ client.on("ready",()=>{
                 }
             })
         }
+        const timer = ms => new Promise(res => setTimeout(res, ms))
+        async function loadQueryRes() { 
+            let cleanQueryResults = []
+            for(i = 1; i<6;i++){
+                cleanQueryResults.push(queryResultClearer( await querySearchAmazon("ps5+console",i)))
+                await timer(1000);
+            }
+            return cleanQueryResults;
+        }
+        let promise = loadQueryRes()
+        promise.then(function(cleanQueryResults) {
+            if(command == "disp_ps5"){
+                console.log("recieved the command");
+                let embed = new Discord.MessageEmbed()
+                .setColor('#dddfe9')
+                .setTitle('Ho trovato questi risultati')
+                .setURL('https://discord.js.org/')
+                .setAuthor('bot')
+                .setDescription('non sono perfetto, potrebbero esserci cose non relazionate')
+                .setTimestamp()
+                .setFooter('Suggerimenti? inviali a M1S0#0001');
+                for(cleanQueryResult of cleanQueryResults){
+                    embed.addField(cleanQueryResult.title,cleanQueryResult.full_link)
+                }
+                console.log("embed construction done",embed);
+                client.api.interactions(interaction.id,interaction.token).callback.post({
+                    data: {
+                        type: 4,
+                        data:{
+                            embeds: [ embed ]
+                        }
+                    }
+                })
+            }
+        })
     })
     
 })
