@@ -6,7 +6,7 @@ var express = require("express");
 
 var app = express(); 
 
-httpServer = app.listen(port,()=>{
+let httpServer = app.listen(port,()=>{
     console.log("listening for connection to " + port)
 })
 
@@ -74,9 +74,9 @@ function querySearchAmazon(keyword, toPage) { //keyword uses url format
 function queryResultClearer(query) {
     let cleanQuery = [];
     let clean = true;
-    for (i of query) {
-        for (res of i.results) {
-            for (f of filter) {
+    for (let i of query) {
+        for (let res of i.results) {
+            for (let f of filter) {
                 if (res.title.toLowerCase().includes(f.toLowerCase()) == true || res.prices.current_price < 200) {
                     clean = false
                 }
@@ -126,7 +126,7 @@ client.on("ready", () => {
             const timer = ms => new Promise(res => setTimeout(res, ms))
             async function loadQueryRes() {
                 let cleanQueryResults = []
-                for (i = 1; i < 6; i++) {
+                for (let i = 1; i < 6; i++) {
                     cleanQueryResults.push(queryResultClearer(await querySearchAmazon("ps5+console", i)))
                     await timer(1000);
                 }
@@ -147,7 +147,7 @@ client.on("ready", () => {
                 if (cleanQueryResults[0].length == 0) {
                     embed.addField("Non ci sono console disponibili", "o il bot si è rotto, oppure questa console non è in stock")
                 } else {
-                    for (cleanQueryResult of cleanQueryResults[0]) {
+                    for (let cleanQueryResult of cleanQueryResults[0]) {
                         embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
                     }
                 }
@@ -159,7 +159,7 @@ client.on("ready", () => {
             const timer = ms => new Promise(res => setTimeout(res, ms))
             async function loadQueryRes() {
                 let cleanQueryResults = []
-                for (i = 1; i < 6; i++) {
+                for (let i = 1; i < 6; i++) {
                     cleanQueryResults.push(queryResultClearer(await querySearchAmazon("Xbox", i)))
                     await timer(1000);
                 }
@@ -180,7 +180,7 @@ client.on("ready", () => {
                 if (cleanQueryResults[0].length == 0) {
                     embed.addField("Non ci sono console disponibili", "o il bot si è rotto, oppure questa console non è in stock")
                 } else {
-                    for (cleanQueryResult of cleanQueryResults[0]) {
+                    for (let cleanQueryResult of cleanQueryResults[0]) {
                         embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
                     }
                 }
