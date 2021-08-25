@@ -1,5 +1,26 @@
 require('dotenv').config()
 
+var port = process.env.PORT || 4444;
+
+var express = require("express");
+
+var app = express(); 
+
+httpServer = app.listen(port,()=>{
+    console.log("listening for connection to " + port)
+})
+
+app.get("/ping",(req,res)=>{
+    try {
+        res.status(200).send("pong!");
+        return;
+    } catch (err) {
+        console.log(err);
+        res.status(400)
+        return;
+    }
+})
+
 var axios = require("axios").default
 
 const Discord = require("discord.js")
