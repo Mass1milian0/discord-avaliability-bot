@@ -32,7 +32,6 @@ const client = new Discord.Client({ intents: ["GUILDS", "GUILD_MESSAGES"] });
 let ebay = Ebay({
     clientID: process.env.EBAY_APP_ID,
     clientSecret: process.env.EBAY_CLIENT_SECRET,
-    env: "SANDBOX",
     headers: {
         // optional
         "X-EBAY-C-MARKETPLACE-ID": "EBAY_IT" // For Great Britain https://www.ebay.co.uk
@@ -122,10 +121,10 @@ function parseEbayDataForFilter(data) {
         }
         for (let item of data[0].searchResult[0].item) {
             results.results.push(
-                {   
+                {
                     title: item.title[0],
                     full_link: item.viewItemURL[0],
-                    prices: {current_price: item.sellingStatus[0].currentPrice[0].__value__}
+                    prices: { current_price: item.sellingStatus[0].currentPrice[0].__value__ }
                 }
             )
         }
@@ -216,7 +215,7 @@ client.on("ready", () => {
                     //console.log("embed construction done", embed);
                     interaction.editReply({ embeds: [embed] })
 
-                    setTimeout(function(){interaction.deleteReply()},5000)
+                    setTimeout(function () { interaction.deleteReply() }, 5000)
                 })
             })
             //}, (error) => {
@@ -224,66 +223,64 @@ client.on("ready", () => {
             //});
         }
         if (command == "disp_xbox") {
-            if (command == "disp_ps5") {
-                interaction.reply("ci sto lavorando...")
-                function loadQueryRes() {
-                    return new Promise((resolve, reject) => {
-                        let cleanQueryResults = []
-                        let calls = 1;
-    
-                        let interval = setInterval(async () => {
-                            console.log(calls)
-                            calls += 1;
-                            const result = await querySearchAmazon("ps5+console", calls); //FIXME might be broken, but gotta try again in a month, reached the montly quota, as 27/08/2021
-                            cleanQueryResults.push(queryResultClearer(result))
-    
-                            if (calls === 6) {
-                                clearInterval(interval)
-                                resolve(cleanQueryResults)
-                            }
-    
-                        }, 5000);
-                    });
-                }
-                //loadQueryRes().then(function (cleanQueryResults) {
-                ebay.findItemsByKeywords('xbox').then(function (data) {
-                    let cleanQueryResults = [[]] //FIXME patch so you can still use the bot
-                    let cleanQueryResultsEbay = parseEbayDataForFilter(data)
-                    cleanQueryResultsEbay.then(function (ebayRes) {
-                        let cleanEbayRes = [[]];
-                        if (!ebayRes.length == 0) {
-                            cleanEbayRes = [];
-                            cleanEbayRes.push(queryResultClearer(ebayRes))
+            interaction.reply("ci sto lavorando...")
+            function loadQueryRes() {
+                return new Promise((resolve, reject) => {
+                    let cleanQueryResults = []
+                    let calls = 1;
+
+                    let interval = setInterval(async () => {
+                        console.log(calls)
+                        calls += 1;
+                        const result = await querySearchAmazon("ps5+console", calls); //FIXME might be broken, but gotta try again in a month, reached the montly quota, as 27/08/2021
+                        cleanQueryResults.push(queryResultClearer(result))
+
+                        if (calls === 6) {
+                            clearInterval(interval)
+                            resolve(cleanQueryResults)
                         }
-                        console.log("recieved the command");
-                        let embed = new Discord.MessageEmbed()
-                            .setColor('#dddfe9')
-                            .setTitle('Ho trovato questi risultati')
-                            .setURL('https://discord.js.org/')
-                            .setAuthor('bot')
-                            .setDescription('non sono perfetto, potrebbero esserci cose non relazionate')
-                            .setTimestamp()
-                            .setFooter('Suggerimenti? inviali a M1S0#0001');
-                        if (cleanQueryResults[0].length == 0 && cleanEbayRes[0].length == 0) {
-                            embed.addField("Non ci sono console disponibili", "o il bot si è rotto, oppure questa console non è in stock")
-                        } else {
-                            /*for (let cleanQueryResult of cleanQueryResults[0]) {
-                                embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
-                            }*/ //FIXME workaround for amazon quota
-                            for (let cleanQueryResult of cleanEbayRes[0]) {
-                                embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
-                            }
-                        }
-                        //console.log("embed construction done", embed);
-                        interaction.editReply({ embeds: [embed] })
-    
-                        setTimeout(function(){interaction.deleteReply()},5000)
-                    })
-                })
-                //}, (error) => {
-                //console.log(error);
-                //});
+
+                    }, 5000);
+                });
             }
+            //loadQueryRes().then(function (cleanQueryResults) {
+            ebay.findItemsByKeywords('xbox').then(function (data) {
+                let cleanQueryResults = [[]] //FIXME patch so you can still use the bot
+                let cleanQueryResultsEbay = parseEbayDataForFilter(data)
+                cleanQueryResultsEbay.then(function (ebayRes) {
+                    let cleanEbayRes = [[]];
+                    if (!ebayRes.length == 0) {
+                        cleanEbayRes = [];
+                        cleanEbayRes.push(queryResultClearer(ebayRes))
+                    }
+                    console.log("recieved the command");
+                    let embed = new Discord.MessageEmbed()
+                        .setColor('#dddfe9')
+                        .setTitle('Ho trovato questi risultati')
+                        .setURL('https://discord.js.org/')
+                        .setAuthor('bot')
+                        .setDescription('non sono perfetto, potrebbero esserci cose non relazionate')
+                        .setTimestamp()
+                        .setFooter('Suggerimenti? inviali a M1S0#0001');
+                    if (cleanQueryResults[0].length == 0 && cleanEbayRes[0].length == 0) {
+                        embed.addField("Non ci sono console disponibili", "o il bot si è rotto, oppure questa console non è in stock")
+                    } else {
+                        /*for (let cleanQueryResult of cleanQueryResults[0]) {
+                            embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
+                        }*/ //FIXME workaround for amazon quota
+                        for (let cleanQueryResult of cleanEbayRes[0]) {
+                            embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
+                        }
+                    }
+                    //console.log("embed construction done", embed);
+                    interaction.editReply({ embeds: [embed] })
+
+                    setTimeout(function () { interaction.deleteReply() }, 5000)
+                })
+            })
+            //}, (error) => {
+            //console.log(error);
+            //});
         }
     })
 
