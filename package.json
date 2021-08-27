@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "description": "checks console avaliablity",
   "main": "index.js",
-  "scripts": {
-    "scripts": { "start": "node index.js" }
-  },
+  "scripts": { "start": "node server.js" },
   "author": "Massimiliano Biondi",
   "license": "ISC",
   "dependencies": {
