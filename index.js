@@ -4,13 +4,15 @@ var port = process.env.PORT || 4444;
 
 var express = require("express");
 
-var app = express(); 
+let Ebay = require("ebay-node-api");
 
-let httpServer = app.listen(port,()=>{
+var app = express();
+
+let httpServer = app.listen(port, () => {
     console.log("listening for connection to " + port)
 })
 
-app.get("/ping",(req,res)=>{
+app.get("/ping", (req, res) => {
     try {
         res.status(200).send("pong!");
         return;
@@ -26,6 +28,21 @@ var axios = require("axios").default
 const Discord = require("discord.js")
 
 const client = new Discord.Client({ intents: ["GUILDS", "GUILD_MESSAGES"] });
+
+let ebay = Ebay({
+    clientID: process.env.EBAY_APP_ID,
+    clientSecret: process.env.EBAY_CLIENT_SECRET,
+    env: "SANDBOX",
+    headers: {
+        // optional
+        "X-EBAY-C-MARKETPLACE-ID": "EBAY_IT" // For Great Britain https://www.ebay.co.uk
+    },
+    body: {
+        grant_type: 'client_credentials',
+        //you may need to define the oauth scope
+        scope: 'https://api.ebay.com/oauth/api_scope'
+    }
+});
 
 const filter = [
     "Controller", "Cuffie", "Accessorio", "Altoparlante", "karaoke", "Arcade",
@@ -59,7 +76,7 @@ function querySearchAmazon(keyword, toPage) { //keyword uses url format
                 resolve(query)
             })
                 .catch(function (error) {
-                    console.error(error);
+                    //console.error(error);
                     reject(error)
                 })
         }
@@ -77,7 +94,7 @@ function queryResultClearer(query) {
     for (let i of query) {
         for (let res of i.results) {
             for (let f of filter) {
-                if (res.title.toLowerCase().includes(f.toLowerCase()) == true || res.prices.current_price < 200) {
+                if (res.title.toLowerCase().includes(f.toLowerCase()) == true || res.prices.current_price <= 200) {
                     clean = false
                 }
             }
@@ -93,6 +110,30 @@ function queryResultClearer(query) {
  * 
  * @param {Object} array array with objects to be pharsed
  */
+
+function parseEbayDataForFilter(data) {
+    let promise = new Promise(function (resolve, reject) {
+        if (typeof data === 'undefined') resolve([[]])
+        if (data[0].searchResult[0]["@count"] == 0) resolve([[]])
+        let parsedResults = []
+        let results = {
+            results: [
+            ]
+        }
+        for (let item of data[0].searchResult[0].item) {
+            results.results.push(
+                {   
+                    title: item.title[0],
+                    full_link: item.viewItemURL[0],
+                    prices: {current_price: item.sellingStatus[0].currentPrice[0].__value__}
+                }
+            )
+        }
+        parsedResults.push(results);
+        resolve(parsedResults)
+    })
+    return promise
+}
 
 client.on("ready", () => {
     console.log("bot is ready to roll")
@@ -123,70 +164,126 @@ client.on("ready", () => {
             interaction.reply("pong!")
         }
         if (command == "disp_ps5") {
-            const timer = ms => new Promise(res => setTimeout(res, ms))
-            async function loadQueryRes() {
-                let cleanQueryResults = []
-                for (let i = 1; i < 6; i++) {
-                    cleanQueryResults.push(queryResultClearer(await querySearchAmazon("ps5+console", i)))
-                    await timer(1000);
-                }
-                return cleanQueryResults;
+            interaction.reply("ci sto lavorando...")
+            function loadQueryRes() {
+                return new Promise((resolve, reject) => {
+                    let cleanQueryResults = []
+                    let calls = 1;
+
+                    let interval = setInterval(async () => {
+                        console.log(calls)
+                        calls += 1;
+                        const result = await querySearchAmazon("ps5+console", calls); //FIXME might be broken, but gotta try again in a month, reached the montly quota, as 27/08/2021
+                        cleanQueryResults.push(queryResultClearer(result))
+
+                        if (calls === 6) {
+                            clearInterval(interval)
+                            resolve(cleanQueryResults)
+                        }
+
+                    }, 5000);
+                });
             }
-            let promise = loadQueryRes()
-            interaction.reply("ci sto lavorando")
-            promise.then(function (cleanQueryResults) {
-                console.log("recieved the command");
-                let embed = new Discord.MessageEmbed()
-                    .setColor('#dddfe9')
-                    .setTitle('Ho trovato questi risultati')
-                    .setURL('https://discord.js.org/')
-                    .setAuthor('bot')
-                    .setDescription('non sono perfetto, potrebbero esserci cose non relazionate')
-                    .setTimestamp()
-                    .setFooter('Suggerimenti? inviali a M1S0#0001');
-                if (cleanQueryResults[0].length == 0) {
-                    embed.addField("Non ci sono console disponibili", "o il bot si è rotto, oppure questa console non è in stock")
-                } else {
-                    for (let cleanQueryResult of cleanQueryResults[0]) {
-                        embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
+            //loadQueryRes().then(function (cleanQueryResults) {
+            ebay.findItemsByKeywords('ps5').then(function (data) {
+                let cleanQueryResults = [[]] //FIXME patch so you can still use the bot
+                let cleanQueryResultsEbay = parseEbayDataForFilter(data)
+                cleanQueryResultsEbay.then(function (ebayRes) {
+                    let cleanEbayRes = [[]];
+                    if (!ebayRes.length == 0) {
+                        cleanEbayRes = [];
+                        cleanEbayRes.push(queryResultClearer(ebayRes))
                     }
-                }
-                console.log("embed construction done", embed);
-                interaction.editReply({ embeds: [embed] })
+                    console.log("recieved the command");
+                    let embed = new Discord.MessageEmbed()
+                        .setColor('#dddfe9')
+                        .setTitle('Ho trovato questi risultati')
+                        .setURL('https://discord.js.org/')
+                        .setAuthor('bot')
+                        .setDescription('non sono perfetto, potrebbero esserci cose non relazionate')
+                        .setTimestamp()
+                        .setFooter('Suggerimenti? inviali a M1S0#0001');
+                    if (cleanQueryResults[0].length == 0 && cleanEbayRes[0].length == 0) {
+                        embed.addField("Non ci sono console disponibili", "o il bot si è rotto, oppure questa console non è in stock")
+                    } else {
+                        /*for (let cleanQueryResult of cleanQueryResults[0]) {
+                            embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
+                        }*/ //FIXME workaround for amazon quota
+                        for (let cleanQueryResult of cleanEbayRes[0]) {
+                            embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
+                        }
+                    }
+                    //console.log("embed construction done", embed);
+                    interaction.editReply({ embeds: [embed] })
+
+                    setTimeout(function(){interaction.deleteReply()},5000)
+                })
             })
+            //}, (error) => {
+            //console.log(error);
+            //});
         }
-        if(command == "disp_xbox"){
-            const timer = ms => new Promise(res => setTimeout(res, ms))
-            async function loadQueryRes() {
-                let cleanQueryResults = []
-                for (let i = 1; i < 6; i++) {
-                    cleanQueryResults.push(queryResultClearer(await querySearchAmazon("Xbox", i)))
-                    await timer(1000);
+        if (command == "disp_xbox") {
+            if (command == "disp_ps5") {
+                interaction.reply("ci sto lavorando...")
+                function loadQueryRes() {
+                    return new Promise((resolve, reject) => {
+                        let cleanQueryResults = []
+                        let calls = 1;
+    
+                        let interval = setInterval(async () => {
+                            console.log(calls)
+                            calls += 1;
+                            const result = await querySearchAmazon("ps5+console", calls); //FIXME might be broken, but gotta try again in a month, reached the montly quota, as 27/08/2021
+                            cleanQueryResults.push(queryResultClearer(result))
+    
+                            if (calls === 6) {
+                                clearInterval(interval)
+                                resolve(cleanQueryResults)
+                            }
+    
+                        }, 5000);
+                    });
                 }
-                return cleanQueryResults;
+                //loadQueryRes().then(function (cleanQueryResults) {
+                ebay.findItemsByKeywords('xbox').then(function (data) {
+                    let cleanQueryResults = [[]] //FIXME patch so you can still use the bot
+                    let cleanQueryResultsEbay = parseEbayDataForFilter(data)
+                    cleanQueryResultsEbay.then(function (ebayRes) {
+                        let cleanEbayRes = [[]];
+                        if (!ebayRes.length == 0) {
+                            cleanEbayRes = [];
+                            cleanEbayRes.push(queryResultClearer(ebayRes))
+                        }
+                        console.log("recieved the command");
+                        let embed = new Discord.MessageEmbed()
+                            .setColor('#dddfe9')
+                            .setTitle('Ho trovato questi risultati')
+                            .setURL('https://discord.js.org/')
+                            .setAuthor('bot')
+                            .setDescription('non sono perfetto, potrebbero esserci cose non relazionate')
+                            .setTimestamp()
+                            .setFooter('Suggerimenti? inviali a M1S0#0001');
+                        if (cleanQueryResults[0].length == 0 && cleanEbayRes[0].length == 0) {
+                            embed.addField("Non ci sono console disponibili", "o il bot si è rotto, oppure questa console non è in stock")
+                        } else {
+                            /*for (let cleanQueryResult of cleanQueryResults[0]) {
+                                embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
+                            }*/ //FIXME workaround for amazon quota
+                            for (let cleanQueryResult of cleanEbayRes[0]) {
+                                embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
+                            }
+                        }
+                        //console.log("embed construction done", embed);
+                        interaction.editReply({ embeds: [embed] })
+    
+                        setTimeout(function(){interaction.deleteReply()},5000)
+                    })
+                })
+                //}, (error) => {
+                //console.log(error);
+                //});
             }
-            let promise = loadQueryRes()
-            interaction.reply("ci sto lavorando")
-            promise.then(function (cleanQueryResults) {
-                console.log(cleanQueryResults);
-                let embed = new Discord.MessageEmbed()
-                    .setColor('#dddfe9')
-                    .setTitle('Ho trovato questi risultati')
-                    .setURL('https://discord.js.org/')
-                    .setAuthor('bot')
-                    .setDescription('non sono perfetto, potrebbero esserci cose non relazionate')
-                    .setTimestamp()
-                    .setFooter('Suggerimenti? inviali a M1S0#0001');
-                if (cleanQueryResults[0].length == 0) {
-                    embed.addField("Non ci sono console disponibili", "o il bot si è rotto, oppure questa console non è in stock")
-                } else {
-                    for (let cleanQueryResult of cleanQueryResults[0]) {
-                        embed.addField(cleanQueryResult.title, cleanQueryResult.full_link)
-                    }
-                }
-                console.log("embed construction done", embed);
-                interaction.editReply({ embeds: [embed] })
-            })
         }
     })
 
