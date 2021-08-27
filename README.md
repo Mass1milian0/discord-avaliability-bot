@@ -12,7 +12,11 @@ add a .env file in the root directory of the project
 ```
 DISCORD_TOKEN=
 AMAZON_API_KEY=
+EBAY_APP_ID=
+EBAY_DEV_ID=
+EBAY_CLIENT_SECRET=
 ```
 
 as for amazon api, the one it is designed for is this one:
 https://rapidapi.com/ZombieBest/api/amazon-products1/
+for ebay api, i'm using official api
